@@ -1,0 +1,42 @@
+name: Daily TSLA regime update
+
+on:
+  schedule:
+    # 5:30 AM CT (CDT, UTC-5) -> 10:30 UTC, Monday-Friday
+    # In CST (UTC-6) this is 4:30 AM CT, still well before market open
+    - cron: "30 10 * * 1-5"
+  workflow_dispatch: {}  # allow manual triggering
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Generate page
+        run: python generate.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet docs/index.html; then
+            echo "No change in page output, skipping commit."
+          else
+            git add docs/index.html
+            git commit -m "daily: regime page update $(date -u +'%Y-%m-%d')"
+            git push
+          fi
